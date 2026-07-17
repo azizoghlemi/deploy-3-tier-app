@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-config
+  namespace: 3-tier-app
+data:
+  MONGO_INITDB_DATABASE: appdb
+  MONGO_INITDB_ROOT_USERNAME: user
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongo-secret
+  namespace: 3-tier-app
+type: Opaque
+stringData:
+  MONGO_INITDB_ROOT_PASSWORD: password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: 3-tier-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: mongo-config
+        - secretRef:
+            name: mongo-secret
+        volumeMounts:
+        - name: storage
+          mountPath: /var/lib/mongoql/data
+      volumes:
+      - name: storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: 3-tier-app
+spec:
+  selector:
+    app: mongo
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
